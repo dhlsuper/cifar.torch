@@ -1,6 +1,7 @@
 require 'xlua'
 require 'optim'
 require 'cunn'
+require 'image'
 dofile './provider.lua'
 local c = require 'trepl.colorize'
 
@@ -42,24 +43,24 @@ end
 
 print(c.blue '==>' ..' configuring model')
 local model = nn.Sequential()
-model:add(nn.BatchFlip():float())
+--model:add(nn.BatchFlip():float())
 model:add(nn.Copy('torch.FloatTensor','torch.CudaTensor'):cuda())
 model:add(dofile('models/'..opt.model..'.lua'):cuda())
-model:get(2).updateGradInput = function(input) return end
+model:get(1).updateGradInput = function(input) return end
 
 if opt.backend == 'cudnn' then
    require 'cudnn'
-   cudnn.convert(model:get(3), cudnn)
+   cudnn.convert(model:get(2), cudnn)
 end
 
 print(model)
 
 print(c.blue '==>' ..' loading data')
-provider = torch.load 'provider.t7'
+provider = torch.load 'provider_vhe.t7'
 provider.trainData.data = provider.trainData.data:float()
 provider.testData.data = provider.testData.data:float()
 
-confusion = optim.ConfusionMatrix(10)
+confusion = optim.ConfusionMatrix(2)
 
 print('Will save at '..opt.save)
 paths.mkdir(opt.save)
@@ -118,6 +119,7 @@ function train()
       return f,gradParameters
     end
     optim.sgd(feval, parameters, optimState)
+    collectgarbage()
   end
 
   confusion:updateValids()
@@ -135,10 +137,11 @@ function test()
   -- disable flips, dropouts and batch normalization
   model:evaluate()
   print(c.blue '==>'.." testing")
-  local bs = 125
+  local bs = 26
   for i=1,provider.testData.data:size(1),bs do
     local outputs = model:forward(provider.testData.data:narrow(1,i,bs))
     confusion:batchAdd(outputs, provider.testData.labels:narrow(1,i,bs))
+    collectgarbage()
   end
 
   confusion:updateValids()
@@ -184,7 +187,7 @@ function test()
   if epoch % 50 == 0 then
     local filename = paths.concat(opt.save, 'model.net')
     print('==> saving model to '..filename)
-    torch.save(filename, model:get(3):clearState())
+    torch.save(filename, model:get(2):clearState())
   end
 
   confusion:zero()

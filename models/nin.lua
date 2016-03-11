@@ -13,7 +13,7 @@ local function Block(...)
   return model
 end
 
-Block(3,192,5,5,1,1,2,2)
+Block(1,192,5,5,1,1,2,2)
 Block(192,160,1,1)
 Block(160,96,1,1)
 model:add(nn.SpatialMaxPooling(3,3,2,2):ceil())

@@ -10,17 +10,25 @@ local function ConvBNReLU(nInputPlane, nOutputPlane)
   return vgg
 end
 
+local function ConvBN2ReLU(nInputPlane, nOutputPlane)
+  vgg:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 12,12, 4,4, 4,4))
+  vgg:add(nn.SpatialBatchNormalization(nOutputPlane,1e-3))
+  vgg:add(nn.ReLU(true))
+  return vgg
+end
+
+
 -- Will use "ceil" MaxPooling because we want to save as much
 -- space as we can
 local MaxPooling = nn.SpatialMaxPooling
 
-ConvBNReLU(3,64):add(nn.Dropout(0.3))
+ConvBNReLU(1,64):add(nn.Dropout(0.3))
 ConvBNReLU(64,64)
-vgg:add(MaxPooling(2,2,2,2):ceil())
+vgg:add(MaxPooling(4,4,4,4):ceil())
 
 ConvBNReLU(64,128):add(nn.Dropout(0.4))
 ConvBNReLU(128,128)
-vgg:add(MaxPooling(2,2,2,2):ceil())
+vgg:add(MaxPooling(4,4,4,4):ceil())
 
 ConvBNReLU(128,256):add(nn.Dropout(0.4))
 ConvBNReLU(256,256):add(nn.Dropout(0.4))
@@ -44,7 +52,7 @@ classifier:add(nn.Linear(512,512))
 classifier:add(nn.BatchNormalization(512))
 classifier:add(nn.ReLU(true))
 classifier:add(nn.Dropout(0.5))
-classifier:add(nn.Linear(512,10))
+classifier:add(nn.Linear(512,2))
 vgg:add(classifier)
 
 -- initialization from MSR
